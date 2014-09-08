@@ -1,5 +1,3 @@
-THREE = require 'three'
-_ = require 'underscore'
 
 class Vis
   constructor: (@scene, @audioController)->

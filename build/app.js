@@ -38031,11 +38031,13 @@ TWEEN.Interpolation = {
 
 module.exports=TWEEN;
 },{}],4:[function(require,module,exports){
-var AudioController, AudioTexture, Circles, HEIGHT, Stream, THREE, TWEEN, Vis, WIDTH, animate, audioController, camera, circles, clock, controls, onWindowResize, renderer, scene, stream, time, _;
+var AudioController, AudioTexture, HEIGHT, Stream, THREE, TWEEN, Vis, WIDTH, animate, audioController, camSpeed, camera, clock, colors, controls, curVertexIndex, geometry, i, line, material, onBeat, onWindowResize, prevVertex, renderer, rf, ringGeo, ringMat, ringMesh, scene, stream, time, vertex, _, _i;
 
 THREE = require('three');
 
 require('OrbitControls');
+
+require('FlyControls');
 
 AudioController = require('./vendor/AudioController');
 
@@ -38045,9 +38047,9 @@ Stream = require('./vendor/Stream');
 
 TWEEN = require('tween.js');
 
-Vis = require('./vis');
-
 _ = require('underscore');
+
+Vis = require('./vis');
 
 time = null;
 
@@ -38059,9 +38061,15 @@ clock = new THREE.Clock();
 
 scene = new THREE.Scene();
 
-camera = new THREE.PerspectiveCamera(50, WIDTH / HEIGHT, 0.001, 20000);
+rf = THREE.Math.randFloat;
+
+camera = new THREE.PerspectiveCamera(50, WIDTH / HEIGHT, 1, 20000);
 
 camera.position.z = 50;
+
+camera.position.y = 100;
+
+camSpeed = 10;
 
 renderer = new THREE.WebGLRenderer({
   antialias: true
@@ -38077,44 +38085,52 @@ audioController = new AudioController();
 
 stream = new Stream('/audio/hang.mp3', audioController);
 
-stream.play();
+ringGeo = new THREE.TorusGeometry(20, 2, 10, 50);
 
-Circles = (function() {
-  function Circles(scene, audioController) {
-    var circle, i, _i;
-    this.scene = scene;
-    this.audioController = audioController;
-    this.circles = [];
-    for (i = _i = 0; _i <= 10; i = ++_i) {
-      circle = new THREE.Mesh(new THREE.SphereGeometry(5, 5), new THREE.MeshBasicMaterial());
-      circle.position.set(_.random(-50, 50), _.random(-50, 50), _.random(-50, 50));
-      scene.add(circle);
-      this.circles.push(circle);
-    }
-    this.flash();
+ringMat = new THREE.MeshBasicMaterial({
+  wireframe: true
+});
+
+ringMesh = new THREE.Mesh(ringGeo, ringMat);
+
+colors = [];
+
+geometry = new THREE.Geometry();
+
+geometry.vertices.push(new THREE.Vector3(0, 0, 0));
+
+prevVertex = geometry.vertices[0];
+
+for (i = _i = 0; _i <= 10; i = ++_i) {
+  vertex = new THREE.Vector3(prevVertex.x + rf(1, 10), prevVertex.y + rf(1, 10), 0);
+  geometry.vertices.push(vertex);
+  colors[i] = new THREE.Color(0x000000);
+  prevVertex = vertex;
+}
+
+geometry.colors = colors;
+
+curVertexIndex = 0;
+
+material = new THREE.LineBasicMaterial({
+  vertexColors: THREE.VertexColors
+});
+
+line = new THREE.Line(geometry, material);
+
+scene.add(line);
+
+onBeat = function() {
+  var _ref;
+  console.log('yar');
+  if ((_ref = geometry.colors[curVertexIndex++]) != null) {
+    _ref.setHSL(0.4, 0.7, 0.7);
   }
-
-  Circles.prototype.flash = function() {
-    var circle;
-    circle = _.sample(this.circles);
-    console.log(circle.material.color.getHex());
-    if (circle.material.color.getHex() === 0xffffff) {
-      circle.material.color.set(0x000000);
-    } else {
-      circle.material.color.set(0xffffff);
-    }
-    return setTimeout((function(_this) {
-      return function() {
-        return _this.flash();
-      };
-    })(this), 440);
-  };
-
-  return Circles;
-
-})();
-
-circles = new Circles(scene, audioController);
+  geometry.colorsNeedUpdate = true;
+  return setTimeout(function() {
+    return onBeat();
+  }, 440);
+};
 
 animate = function() {
   requestAnimationFrame(animate);
@@ -38135,10 +38151,12 @@ onWindowResize = function() {
   return camera.updateProjectionMatrix();
 };
 
+onBeat();
+
 animate();
 
 
-},{"./vendor/AudioController":5,"./vendor/AudioTexture":6,"./vendor/Stream":8,"./vis":9,"OrbitControls":7,"three":2,"tween.js":3,"underscore":1}],5:[function(require,module,exports){
+},{"./vendor/AudioController":5,"./vendor/AudioTexture":6,"./vendor/Stream":9,"./vis":10,"FlyControls":7,"OrbitControls":8,"three":2,"tween.js":3,"underscore":1}],5:[function(require,module,exports){
 //@author: cabbibo
 window.AudioController = function(){
 
@@ -38281,6 +38299,278 @@ module.exports = AudioController
 
 module.exports = AudioTexture;
 },{}],7:[function(require,module,exports){
+require('three')
+
+/**
+ * @author James Baicoianu / http://www.baicoianu.com/
+ */
+
+THREE.FlyControls = function ( object, domElement ) {
+
+  this.object = object;
+
+  this.domElement = ( domElement !== undefined ) ? domElement : document;
+  if ( domElement ) this.domElement.setAttribute( 'tabindex', -1 );
+
+  // API
+
+  this.movementSpeed = 1.0;
+  this.rollSpeed = 0.005;
+
+  this.dragToLook = false;
+  this.autoForward = true;
+
+  // disable default target object behavior
+
+  // internals
+
+  this.tmpQuaternion = new THREE.Quaternion();
+
+  this.mouseStatus = 0;
+
+  this.moveState = { up: 0, down: 0, left: 0, right: 0, forward: 0, back: 0, pitchUp: 0, pitchDown: 0, yawLeft: 0, yawRight: 0, rollLeft: 0, rollRight: 0 };
+  this.moveVector = new THREE.Vector3( 0, 0, 0 );
+  this.rotationVector = new THREE.Vector3( 0, 0, 0 );
+
+  this.handleEvent = function ( event ) {
+
+    if ( typeof this[ event.type ] == 'function' ) {
+
+      this[ event.type ]( event );
+
+    }
+
+  };
+
+  this.keydown = function( event ) {
+
+    if ( event.altKey ) {
+
+      return;
+
+    }
+
+    //event.preventDefault();
+
+    switch ( event.keyCode ) {
+
+      case 16: /* shift */ this.movementSpeedMultiplier = .1; break;
+
+      case 87: /*W*/ this.moveState.forward = 1; break;
+      case 83: /*S*/ this.moveState.back = 1; break;
+
+      case 65: /*A*/ this.moveState.left = 1; break;
+      case 68: /*D*/ this.moveState.right = 1; break;
+
+      case 82: /*R*/ this.moveState.up = 1; break;
+      case 70: /*F*/ this.moveState.down = 1; break;
+
+      case 38: /*up*/ this.moveState.pitchUp = 1; break;
+      case 40: /*down*/ this.moveState.pitchDown = 1; break;
+
+      case 37: /*left*/ this.moveState.yawLeft = 1; break;
+      case 39: /*right*/ this.moveState.yawRight = 1; break;
+
+      case 81: /*Q*/ this.moveState.rollLeft = 1; break;
+      case 69: /*E*/ this.moveState.rollRight = 1; break;
+
+    }
+
+    this.updateMovementVector();
+    this.updateRotationVector();
+
+  };
+
+  this.keyup = function( event ) {
+
+    switch( event.keyCode ) {
+
+      case 16: /* shift */ this.movementSpeedMultiplier = 1; break;
+
+      case 87: /*W*/ this.moveState.forward = 0; break;
+      case 83: /*S*/ this.moveState.back = 0; break;
+
+      case 65: /*A*/ this.moveState.left = 0; break;
+      case 68: /*D*/ this.moveState.right = 0; break;
+
+      case 82: /*R*/ this.moveState.up = 0; break;
+      case 70: /*F*/ this.moveState.down = 0; break;
+
+      case 38: /*up*/ this.moveState.pitchUp = 0; break;
+      case 40: /*down*/ this.moveState.pitchDown = 0; break;
+
+      case 37: /*left*/ this.moveState.yawLeft = 0; break;
+      case 39: /*right*/ this.moveState.yawRight = 0; break;
+
+      case 81: /*Q*/ this.moveState.rollLeft = 0; break;
+      case 69: /*E*/ this.moveState.rollRight = 0; break;
+
+    }
+
+    this.updateMovementVector();
+    this.updateRotationVector();
+
+  };
+
+  this.mousedown = function( event ) {
+
+    if ( this.domElement !== document ) {
+
+      this.domElement.focus();
+
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    if ( this.dragToLook ) {
+
+      this.mouseStatus ++;
+
+    } else {
+
+      switch ( event.button ) {
+
+        case 0: this.moveState.forward = 1; break;
+        case 2: this.moveState.back = 1; break;
+
+      }
+
+      this.updateMovementVector();
+
+    }
+
+  };
+
+  this.mousemove = function( event ) {
+
+    if ( !this.dragToLook || this.mouseStatus > 0 ) {
+
+      var container = this.getContainerDimensions();
+      var halfWidth  = container.size[ 0 ] / 2;
+      var halfHeight = container.size[ 1 ] / 2;
+
+      this.moveState.yawLeft   = - ( ( event.pageX - container.offset[ 0 ] ) - halfWidth  ) / halfWidth;
+      this.moveState.pitchDown =   ( ( event.pageY - container.offset[ 1 ] ) - halfHeight ) / halfHeight;
+
+      this.updateRotationVector();
+
+    }
+
+  };
+
+  this.mouseup = function( event ) {
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    if ( this.dragToLook ) {
+
+      this.mouseStatus --;
+
+      this.moveState.yawLeft = this.moveState.pitchDown = 0;
+
+    } else {
+
+      switch ( event.button ) {
+
+        case 0: this.moveState.forward = 0; break;
+        case 2: this.moveState.back = 0; break;
+
+      }
+
+      this.updateMovementVector();
+
+    }
+
+    this.updateRotationVector();
+
+  };
+
+  this.update = function( delta ) {
+    var moveMult = delta * this.movementSpeed;
+    var rotMult = delta * this.rollSpeed;
+
+    this.object.translateX( this.moveVector.x * moveMult );
+    this.object.translateY( this.moveVector.y * moveMult );
+    this.object.translateZ( this.moveVector.z * moveMult );
+
+    this.tmpQuaternion.set( this.rotationVector.x * rotMult, this.rotationVector.y * rotMult, this.rotationVector.z * rotMult, 1 ).normalize();
+    this.object.quaternion.multiply( this.tmpQuaternion );
+
+    // expose the rotation vector for convenience
+    this.object.rotation.setFromQuaternion( this.object.quaternion, this.object.rotation.order );
+
+
+  };
+
+  this.updateMovementVector = function() {
+    console.log(this.autoForward)
+    var forward = ( this.moveState.forward || ( this.autoForward && !this.moveState.back ) ) ? 1 : 0;
+
+    this.moveVector.x = ( -this.moveState.left    + this.moveState.right );
+    this.moveVector.y = ( -this.moveState.down    + this.moveState.up );
+    this.moveVector.z = ( -forward + this.moveState.back );
+
+    //console.log( 'move:', [ this.moveVector.x, this.moveVector.y, this.moveVector.z ] );
+
+  };
+
+  this.updateRotationVector = function() {
+
+    this.rotationVector.x = ( -this.moveState.pitchDown + this.moveState.pitchUp );
+    this.rotationVector.y = ( -this.moveState.yawRight  + this.moveState.yawLeft );
+    this.rotationVector.z = ( -this.moveState.rollRight + this.moveState.rollLeft );
+
+    //console.log( 'rotate:', [ this.rotationVector.x, this.rotationVector.y, this.rotationVector.z ] );
+
+  };
+
+  this.getContainerDimensions = function() {
+
+    if ( this.domElement != document ) {
+
+      return {
+        size  : [ this.domElement.offsetWidth, this.domElement.offsetHeight ],
+        offset  : [ this.domElement.offsetLeft,  this.domElement.offsetTop ]
+      };
+
+    } else {
+
+      return {
+        size  : [ window.innerWidth, window.innerHeight ],
+        offset  : [ 0, 0 ]
+      };
+
+    }
+
+  };
+
+  function bind( scope, fn ) {
+
+    return function () {
+
+      fn.apply( scope, arguments );
+
+    };
+
+  };
+
+  this.domElement.addEventListener( 'contextmenu', function ( event ) { event.preventDefault(); }, false );
+
+  this.domElement.addEventListener( 'mousemove', bind( this, this.mousemove ), false );
+  this.domElement.addEventListener( 'mousedown', bind( this, this.mousedown ), false );
+  this.domElement.addEventListener( 'mouseup',   bind( this, this.mouseup ), false );
+
+  window.addEventListener( 'keydown', bind( this, this.keydown ), false );
+  window.addEventListener( 'keyup',   bind( this, this.keyup ), false );
+
+  this.updateMovementVector();
+  this.updateRotationVector();
+
+};
+
+},{"three":2}],8:[function(require,module,exports){
 THREE = require('three')
 /**
  * @author qiao / https://github.com/qiao
@@ -38924,7 +39214,7 @@ THREE.OrbitControls = function ( object, domElement ) {
 THREE.OrbitControls.prototype = Object.create( THREE.EventDispatcher.prototype );
 
 
-},{"three":2}],8:[function(require,module,exports){
+},{"three":2}],9:[function(require,module,exports){
 
 STREAMS = [];
 
@@ -38999,12 +39289,8 @@ Stream.prototype.update = function(){
 
 module.exports = Stream;
 
-},{}],9:[function(require,module,exports){
-var THREE, Vis, _;
-
-THREE = require('three');
-
-_ = require('underscore');
+},{}],10:[function(require,module,exports){
+var Vis;
 
 Vis = (function() {
   function Vis(scene, audioController) {
@@ -39041,4 +39327,4 @@ Vis = (function() {
 module.exports = Vis;
 
 
-},{"three":2,"underscore":1}]},{},[4])
+},{}]},{},[4])
