@@ -9,6 +9,7 @@ Stream = require './vendor/Stream'
 TWEEN = require 'tween.js'
 _ = require 'underscore'
 Vis = require './vis'
+DreamCatcher = require './dreamcatcher'
 
 
 
@@ -38,41 +39,15 @@ audioController = new AudioController()
 
 stream = new Stream('/audio/hang.mp3', audioController)
 
-# stream.play()
+stream.play()
 
 # vis = new Vis(scene, audioController)
 
-ringGeo = new THREE.TorusGeometry 20, 2, 10, 50
-ringMat = new THREE.MeshBasicMaterial
-  wireframe: true
-ringMesh = new THREE.Mesh ringGeo, ringMat
-# scene.add ringMesh
-
-
-colors = []
-geometry = new THREE.Geometry()
-geometry.vertices.push(new THREE.Vector3(0, 0, 0))
-prevVertex = geometry.vertices[0]
-for i in [0..10]
-  vertex = new THREE.Vector3 prevVertex.x + rf(1, 10), prevVertex.y + rf(1, 10), 0
-  geometry.vertices.push vertex
-  colors[i] = new THREE.Color(0x000000)
-  prevVertex = vertex
-
-
-geometry.colors = colors
-curVertexIndex = 0
-
-material = new THREE.LineBasicMaterial
-  vertexColors: THREE.VertexColors
-
-line = new THREE.Line(geometry, material)
-scene.add line
+dreamcatcher = new DreamCatcher(scene, audioController)
 
 onBeat = ()->
   console.log 'yar'
-  geometry.colors[curVertexIndex++]?.setHSL(0.4, 0.7, 0.7)
-  geometry.colorsNeedUpdate = true
+  dreamcatcher.update()
   setTimeout ()->
     onBeat()
   , 440
