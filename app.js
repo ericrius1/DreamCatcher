@@ -38031,7 +38031,7 @@ TWEEN.Interpolation = {
 
 module.exports=TWEEN;
 },{}],4:[function(require,module,exports){
-var AudioController, AudioTexture, HEIGHT, Stream, THREE, TWEEN, Vis, WIDTH, animate, audioController, camSpeed, camera, clock, colors, controls, curVertexIndex, geometry, i, line, material, onBeat, onWindowResize, prevVertex, renderer, rf, ringGeo, ringMat, ringMesh, scene, stream, time, vertex, _, _i;
+var AudioController, AudioTexture, DreamCatcher, HEIGHT, Stream, THREE, TWEEN, Vis, WIDTH, animate, audioController, camSpeed, camera, clock, controls, dreamcatcher, onBeat, onWindowResize, renderer, rf, scene, stream, time, _;
 
 THREE = require('three');
 
@@ -38050,6 +38050,8 @@ TWEEN = require('tween.js');
 _ = require('underscore');
 
 Vis = require('./vis');
+
+DreamCatcher = require('./dreamcatcher');
 
 time = null;
 
@@ -38085,48 +38087,13 @@ audioController = new AudioController();
 
 stream = new Stream('/audio/hang.mp3', audioController);
 
-ringGeo = new THREE.TorusGeometry(20, 2, 10, 50);
+stream.play();
 
-ringMat = new THREE.MeshBasicMaterial({
-  wireframe: true
-});
-
-ringMesh = new THREE.Mesh(ringGeo, ringMat);
-
-colors = [];
-
-geometry = new THREE.Geometry();
-
-geometry.vertices.push(new THREE.Vector3(0, 0, 0));
-
-prevVertex = geometry.vertices[0];
-
-for (i = _i = 0; _i <= 10; i = ++_i) {
-  vertex = new THREE.Vector3(prevVertex.x + rf(1, 10), prevVertex.y + rf(1, 10), 0);
-  geometry.vertices.push(vertex);
-  colors[i] = new THREE.Color(0x000000);
-  prevVertex = vertex;
-}
-
-geometry.colors = colors;
-
-curVertexIndex = 0;
-
-material = new THREE.LineBasicMaterial({
-  vertexColors: THREE.VertexColors
-});
-
-line = new THREE.Line(geometry, material);
-
-scene.add(line);
+dreamcatcher = new DreamCatcher(scene, audioController);
 
 onBeat = function() {
-  var _ref;
   console.log('yar');
-  if ((_ref = geometry.colors[curVertexIndex++]) != null) {
-    _ref.setHSL(0.4, 0.7, 0.7);
-  }
-  geometry.colorsNeedUpdate = true;
+  dreamcatcher.update();
   return setTimeout(function() {
     return onBeat();
   }, 440);
@@ -38156,7 +38123,51 @@ onBeat();
 animate();
 
 
-},{"./vendor/AudioController":5,"./vendor/AudioTexture":6,"./vendor/Stream":9,"./vis":10,"FlyControls":7,"OrbitControls":8,"three":2,"tween.js":3,"underscore":1}],5:[function(require,module,exports){
+},{"./dreamcatcher":5,"./vendor/AudioController":6,"./vendor/AudioTexture":7,"./vendor/Stream":10,"./vis":11,"FlyControls":8,"OrbitControls":9,"three":2,"tween.js":3,"underscore":1}],5:[function(require,module,exports){
+var DreamCatcher, rf;
+
+rf = THREE.Math.randFloat;
+
+DreamCatcher = (function() {
+  function DreamCatcher(scene, audioController) {
+    var colors, i, line, material, prevVertex, vertex, _i;
+    this.scene = scene;
+    this.audioController = audioController;
+    colors = [];
+    this.geometry = new THREE.Geometry();
+    this.geometry.vertices.push(new THREE.Vector3(0, 0, 0));
+    prevVertex = this.geometry.vertices[0];
+    for (i = _i = 0; _i <= 50; i = ++_i) {
+      vertex = new THREE.Vector3(prevVertex.x + rf(1, 10), prevVertex.y + rf(1, 10), 0);
+      this.geometry.vertices.push(vertex);
+      colors[i] = new THREE.Color(0x000000);
+      prevVertex = vertex;
+    }
+    this.geometry.colors = colors;
+    this.curVertexIndex = 0;
+    material = new THREE.LineBasicMaterial({
+      vertexColors: THREE.VertexColors
+    });
+    line = new THREE.Line(this.geometry, material);
+    this.scene.add(line);
+  }
+
+  DreamCatcher.prototype.update = function() {
+    var _ref;
+    if ((_ref = this.geometry.colors[this.curVertexIndex++]) != null) {
+      _ref.setHSL(0.4, 0.7, 0.7);
+    }
+    return this.geometry.colorsNeedUpdate = true;
+  };
+
+  return DreamCatcher;
+
+})();
+
+module.exports = DreamCatcher;
+
+
+},{}],6:[function(require,module,exports){
 //@author: cabbibo
 window.AudioController = function(){
 
@@ -38247,7 +38258,7 @@ module.exports = AudioController
 
 
 
-},{}],6:[function(require,module,exports){
+},{}],7:[function(require,module,exports){
   //author: @cabbibo
   window.AudioTexture = function(audio) {
     this.analyser = audio.analyzer;
@@ -38298,7 +38309,7 @@ module.exports = AudioController
   }
 
 module.exports = AudioTexture;
-},{}],7:[function(require,module,exports){
+},{}],8:[function(require,module,exports){
 require('three')
 
 /**
@@ -38570,7 +38581,7 @@ THREE.FlyControls = function ( object, domElement ) {
 
 };
 
-},{"three":2}],8:[function(require,module,exports){
+},{"three":2}],9:[function(require,module,exports){
 THREE = require('three')
 /**
  * @author qiao / https://github.com/qiao
@@ -39214,7 +39225,7 @@ THREE.OrbitControls = function ( object, domElement ) {
 THREE.OrbitControls.prototype = Object.create( THREE.EventDispatcher.prototype );
 
 
-},{"three":2}],9:[function(require,module,exports){
+},{"three":2}],10:[function(require,module,exports){
 
 STREAMS = [];
 
@@ -39289,7 +39300,7 @@ Stream.prototype.update = function(){
 
 module.exports = Stream;
 
-},{}],10:[function(require,module,exports){
+},{}],11:[function(require,module,exports){
 var Vis;
 
 Vis = (function() {
