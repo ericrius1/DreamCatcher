@@ -21,7 +21,7 @@ scene = new THREE.Scene()
 rf = THREE.Math.randFloat
 
 camera = new THREE.PerspectiveCamera(50, WIDTH/HEIGHT, 1, 20000)
-camera.position.z = 150
+camera.position.z = 350
 
 
 renderer = new THREE.WebGLRenderer({antialias: true})
@@ -42,7 +42,9 @@ stream = new Stream('/audio/hang.mp3', audioController)
 
 # vis = new Vis(scene, audioController)
 
-dreamcatcher = new DreamCatcher(scene, audioController)
+dreamcatcher = new DreamCatcher(new THREE.Vector3(0, 0, 0), scene, audioController)
+
+
 
 onBeat = ()->
   setTimeout ()->

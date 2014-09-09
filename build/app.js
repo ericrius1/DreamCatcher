@@ -38067,7 +38067,7 @@ rf = THREE.Math.randFloat;
 
 camera = new THREE.PerspectiveCamera(50, WIDTH / HEIGHT, 1, 20000);
 
-camera.position.z = 150;
+camera.position.z = 350;
 
 renderer = new THREE.WebGLRenderer({
   antialias: true
@@ -38083,7 +38083,7 @@ audioController = new AudioController();
 
 stream = new Stream('/audio/hang.mp3', audioController);
 
-dreamcatcher = new DreamCatcher(scene, audioController);
+dreamcatcher = new DreamCatcher(new THREE.Vector3(0, 0, 0), scene, audioController);
 
 onBeat = function() {
   return setTimeout(function() {
@@ -38130,14 +38130,15 @@ TWEEN = require('tween.js');
 rf = THREE.Math.randFloat;
 
 DreamCatcher = (function() {
-  function DreamCatcher(scene, audioController) {
-    var angleBunch, color, colors, createPoints, i, light, line, material, points, ring, ringGeo, ringMat, theta, _i, _j, _ref, _ref1;
+  function DreamCatcher(position, scene, audioController) {
+    var angleBunch, color, colors, createPoints, i, light, line, material, points, theta, _i, _j, _ref, _ref1;
     this.scene = scene;
     this.audioController = audioController;
     this.containerObj = new THREE.Object3D();
+    this.containerObj.position.set(position.x, position.y, position.z);
     this.scene.add(this.containerObj);
     this.numLines = 22;
-    this.numPoints = 21;
+    this.numPoints = 111;
     this.outerRadius = 50;
     this.innerRadius = 1;
     colors = [];
@@ -38146,20 +38147,19 @@ DreamCatcher = (function() {
     this.rippleDir = 1;
     this.hue = 0.496;
     this.light = 0.5;
-    createPoints = function(x1, y1, y2, x2, numPoints) {
+    createPoints = function(x1, y1, x2, y2, numPoints) {
       var i, jumpX, jumpY, newX, newY, points, prevX, prevY, vertex, _i;
-      jumpX = 3;
-      jumpY = 3;
+      jumpX = 0.3;
+      jumpY = 0.1;
       points = [];
       points.push(new THREE.Vector3(x1, y1, 0));
       prevX = x1;
       prevY = y1;
       for (i = _i = 0; 0 <= numPoints ? _i < numPoints : _i > numPoints; i = 0 <= numPoints ? ++_i : --_i) {
         newX = rf(prevX, prevX + jumpX);
-        newY = rf(prevY, prevY + jumpY);
+        newY = rf(-jumpY, jumpY);
         points.push(new THREE.Vector3(newX, newY, 0));
         prevX = newX;
-        prevY = newY;
       }
       vertex = new THREE.Vector3(x2, y2, 0);
       points.push(vertex);
@@ -38173,7 +38173,7 @@ DreamCatcher = (function() {
       this.strandGeometry.vertices.push(points[i]);
       this.strandGeometry.vertices[i].originalVertex = points[i].clone();
       color = new THREE.Color(0x000000);
-      light = map(i, 0, points.length - 1, 0.5, 1);
+      light = map(i, 0, points.length - 1, 0.5, 0.9);
       color.setHSL(0.469, .9, light);
       colors.push(color);
     }
@@ -38183,7 +38183,7 @@ DreamCatcher = (function() {
       vertexColors: THREE.VertexColors,
       linewidth: 2
     });
-    angleBunch = rf(.01, .2);
+    angleBunch = rf(0, 0.5);
     for (i = _j = 0, _ref1 = this.numLines; 0 <= _ref1 ? _j <= _ref1 : _j >= _ref1; i = 0 <= _ref1 ? ++_j : --_j) {
       line = new THREE.Line(this.strandGeometry, material);
       theta = (i / this.numLines) * (Math.PI * 2);
@@ -38192,19 +38192,15 @@ DreamCatcher = (function() {
       } else {
         line.rotation.z = -i / this.numLines * Math.PI * 2 + Math.PI * angleBunch;
       }
-      this.scene.add(line);
+      this.containerObj.add(line);
     }
-    ringGeo = new THREE.TorusGeometry(this.outerRadius, 1, 10, 50);
-    ringMat = new THREE.MeshBasicMaterial;
-    ring = new THREE.Mesh(ringGeo, ringMat);
-    scene.add(ring);
     this.ripple();
   }
 
   DreamCatcher.prototype.ripple = function() {
     var vertex, _ref;
     vertex = this.sampleVertices[this.curVertexIndex];
-    vertex.x += 5;
+    vertex.x += 20;
     if ((_ref = this.prevVertex) != null) {
       _ref.set(this.prevVertex.originalVertex.x, this.prevVertex.originalVertex.y, this.prevVertex.originalVertex.z);
     }
