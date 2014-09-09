@@ -38067,7 +38067,7 @@ rf = THREE.Math.randFloat;
 
 camera = new THREE.PerspectiveCamera(50, WIDTH / HEIGHT, 1, 20000);
 
-camera.position.z = 100;
+camera.position.z = 150;
 
 renderer = new THREE.WebGLRenderer({
   antialias: true
@@ -38083,14 +38083,15 @@ audioController = new AudioController();
 
 stream = new Stream('/audio/hang.mp3', audioController);
 
+stream.play();
+
 dreamcatcher = new DreamCatcher(scene, audioController);
 
 onBeat = function() {
-  console.log('yar');
-  dreamcatcher.update();
+  dreamcatcher.updateBeat();
   return setTimeout(function() {
     return onBeat();
-  }, 440);
+  }, 50);
 };
 
 animate = function() {
@@ -38099,6 +38100,7 @@ animate = function() {
   audioController.update();
   controls.update();
   time = clock.getElapsedTime();
+  dreamcatcher.update();
   return TWEEN.update();
 };
 
@@ -38118,50 +38120,96 @@ animate();
 
 
 },{"./dreamcatcher":5,"./vendor/AudioController":6,"./vendor/AudioTexture":7,"./vendor/Stream":10,"./vis":11,"FlyControls":8,"OrbitControls":9,"three":2,"tween.js":3,"underscore":1}],5:[function(require,module,exports){
-var DreamCatcher, rf;
+var DreamCatcher, TWEEN, rf, _;
+
+_ = require('underscore');
+
+TWEEN = require('tween.js');
 
 rf = THREE.Math.randFloat;
 
 DreamCatcher = (function() {
   function DreamCatcher(scene, audioController) {
-    var colors, createPoints, i, line, material, points, ring, ringGeo, ringMat, _i, _j, _ref, _ref1;
+    var angleBunch, colors, createPoints, i, line, material, points, ring, ringGeo, ringMat, theta, _i, _j, _ref, _ref1;
     this.scene = scene;
     this.audioController = audioController;
-    this.numLines = 11;
-    this.radius = 50;
+    this.numLines = 22;
+    this.outerRadius = 50;
+    this.innerRadius = 1;
     colors = [];
+    this.curColIndex = 0;
+    this.hue = 0.1;
+    this.oldVertex;
+    this.curVertexIndex = 0;
     createPoints = function(x1, y1, y2, x2, numPoints) {
-      var i, points, _i;
+      var i, jumpX, jumpY, newX, newY, points, prevX, prevY, vertex, _i;
+      jumpX = 5;
+      jumpY = 5;
       points = [];
       points.push(new THREE.Vector3(x1, y1, 0));
+      prevX = x1;
+      prevY = y1;
       for (i = _i = 0; 0 <= numPoints ? _i < numPoints : _i > numPoints; i = 0 <= numPoints ? ++_i : --_i) {
-        points.push(new THREE.Vector3(rf(0, 40), rf(0, 40), 0));
+        newX = rf(prevX, prevX + jumpX);
+        newY = rf(prevY, prevY + jumpY);
+        points.push(new THREE.Vector3(newX, newY, 0));
+        prevX = newX;
+        prevY = newY;
       }
-      points.push(new THREE.Vector3(x2, y2, 0));
+      vertex = new THREE.Vector3(x2, y2, 0);
+      points.push(vertex);
       return points;
     };
     this.strandGeometry = new THREE.Geometry();
     this.strandGeometry.vertices.push(new THREE.Vector3(0, 0, 0));
-    points = createPoints(0, 0, 50, 0, 10);
+    colors.push(new THREE.Color(0x000000));
+    points = createPoints(0, 0, this.outerRadius, 0, 11);
     for (i = _i = 0, _ref = points.length; 0 <= _ref ? _i < _ref : _i > _ref; i = 0 <= _ref ? ++_i : --_i) {
+      points[i].originalX = points[i].x;
+      points[i].originalY = points[i].y;
       this.strandGeometry.vertices.push(points[i]);
-      colors[i] = new THREE.Color(0x000000);
-      colors[i].setHSL(0.4, 0.7, 0.7);
+      colors.push(new THREE.Color(0x000000));
     }
     this.strandGeometry.colors = colors;
+    this.sampleVertices = this.strandGeometry.vertices.slice(1, this.strandGeometry.vertices.length);
     material = new THREE.LineBasicMaterial({
-      vertexColors: THREE.VertexColors
+      vertexColors: THREE.VertexColors,
+      linewidth: 2
     });
+    angleBunch = rf(.01, .2);
     for (i = _j = 0, _ref1 = this.numLines; 0 <= _ref1 ? _j <= _ref1 : _j >= _ref1; i = 0 <= _ref1 ? ++_j : --_j) {
       line = new THREE.Line(this.strandGeometry, material);
-      line.rotation.z = i / this.numLines * Math.PI * 2;
+      theta = (i / this.numLines) * (Math.PI * 2);
+      if (i % 2 === 0) {
+        line.rotation.z = i / this.numLines * Math.PI * 2;
+      } else {
+        line.rotation.z = -i / this.numLines * Math.PI * 2 + Math.PI * angleBunch;
+      }
       this.scene.add(line);
     }
-    ringGeo = new THREE.TorusGeometry(this.radius, 1, 10, 50);
+    ringGeo = new THREE.TorusGeometry(this.outerRadius, 1, 10, 50);
     ringMat = new THREE.MeshBasicMaterial;
     ring = new THREE.Mesh(ringGeo, ringMat);
     scene.add(ring);
   }
+
+  DreamCatcher.prototype.updateBeat = function() {
+    var vertex;
+    if (this.curColIndex < this.strandGeometry.vertices.length) {
+      this.strandGeometry.colors[this.curColIndex++].setHSL(this.hue += .1, 0.7, 0.7);
+    }
+    if (this.oldVertex != null) {
+      this.oldVertex.x = this.oldVertex.originalX;
+    }
+    vertex = this.sampleVertices[this.curVertexIndex++];
+    if (this.curVertexIndex === this.sampleVertices.length) {
+      this.curVertexIndex = 0;
+    }
+    vertex.x += 10;
+    this.oldVertex = vertex;
+    this.strandGeometry.verticesNeedUpdate = true;
+    return this.strandGeometry.colorsNeedUpdate = true;
+  };
 
   DreamCatcher.prototype.update = function() {};
 
@@ -38172,7 +38220,7 @@ DreamCatcher = (function() {
 module.exports = DreamCatcher;
 
 
-},{}],6:[function(require,module,exports){
+},{"tween.js":3,"underscore":1}],6:[function(require,module,exports){
 //@author: cabbibo
 window.AudioController = function(){
 

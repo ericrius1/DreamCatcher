@@ -21,7 +21,7 @@ scene = new THREE.Scene()
 rf = THREE.Math.randFloat
 
 camera = new THREE.PerspectiveCamera(50, WIDTH/HEIGHT, 1, 20000)
-camera.position.z = 100
+camera.position.z = 150
 
 
 renderer = new THREE.WebGLRenderer({antialias: true})
@@ -38,18 +38,17 @@ audioController = new AudioController()
 
 stream = new Stream('/audio/hang.mp3', audioController)
 
-# stream.play()
+stream.play()
 
 # vis = new Vis(scene, audioController)
 
 dreamcatcher = new DreamCatcher(scene, audioController)
 
 onBeat = ()->
-  console.log 'yar'
-  dreamcatcher.update()
+  dreamcatcher.updateBeat()
   setTimeout ()->
     onBeat()
-  , 440
+  , 50
 
 
 animate = ()->
@@ -58,7 +57,7 @@ animate = ()->
   audioController.update()
   controls.update()
   time = clock.getElapsedTime()
-
+  dreamcatcher.update()
   TWEEN.update()
   # vis.update()
 
