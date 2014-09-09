@@ -21,9 +21,8 @@ scene = new THREE.Scene()
 rf = THREE.Math.randFloat
 
 camera = new THREE.PerspectiveCamera(50, WIDTH/HEIGHT, 1, 20000)
-camera.position.z = 50
-camera.position.y = 100
-camSpeed = 10
+camera.position.z = 100
+
 
 renderer = new THREE.WebGLRenderer({antialias: true})
 renderer.setSize WIDTH, HEIGHT
@@ -39,7 +38,7 @@ audioController = new AudioController()
 
 stream = new Stream('/audio/hang.mp3', audioController)
 
-stream.play()
+# stream.play()
 
 # vis = new Vis(scene, audioController)
 

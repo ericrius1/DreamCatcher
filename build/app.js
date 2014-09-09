@@ -38031,7 +38031,7 @@ TWEEN.Interpolation = {
 
 module.exports=TWEEN;
 },{}],4:[function(require,module,exports){
-var AudioController, AudioTexture, DreamCatcher, HEIGHT, Stream, THREE, TWEEN, Vis, WIDTH, animate, audioController, camSpeed, camera, clock, controls, dreamcatcher, onBeat, onWindowResize, renderer, rf, scene, stream, time, _;
+var AudioController, AudioTexture, DreamCatcher, HEIGHT, Stream, THREE, TWEEN, Vis, WIDTH, animate, audioController, camera, clock, controls, dreamcatcher, onBeat, onWindowResize, renderer, rf, scene, stream, time, _;
 
 THREE = require('three');
 
@@ -38067,11 +38067,7 @@ rf = THREE.Math.randFloat;
 
 camera = new THREE.PerspectiveCamera(50, WIDTH / HEIGHT, 1, 20000);
 
-camera.position.z = 50;
-
-camera.position.y = 100;
-
-camSpeed = 10;
+camera.position.z = 100;
 
 renderer = new THREE.WebGLRenderer({
   antialias: true
@@ -38086,8 +38082,6 @@ controls = new THREE.OrbitControls(camera);
 audioController = new AudioController();
 
 stream = new Stream('/audio/hang.mp3', audioController);
-
-stream.play();
 
 dreamcatcher = new DreamCatcher(scene, audioController);
 
@@ -38130,35 +38124,46 @@ rf = THREE.Math.randFloat;
 
 DreamCatcher = (function() {
   function DreamCatcher(scene, audioController) {
-    var colors, i, line, material, prevVertex, vertex, _i;
+    var colors, createPoints, i, line, material, points, ring, ringGeo, ringMat, _i, _j, _ref, _ref1;
     this.scene = scene;
     this.audioController = audioController;
+    this.numLines = 11;
+    this.radius = 50;
     colors = [];
-    this.geometry = new THREE.Geometry();
-    this.geometry.vertices.push(new THREE.Vector3(0, 0, 0));
-    prevVertex = this.geometry.vertices[0];
-    for (i = _i = 0; _i <= 50; i = ++_i) {
-      vertex = new THREE.Vector3(prevVertex.x + rf(1, 10), prevVertex.y + rf(1, 10), 0);
-      this.geometry.vertices.push(vertex);
+    createPoints = function(x1, y1, y2, x2, numPoints) {
+      var i, points, _i;
+      points = [];
+      points.push(new THREE.Vector3(x1, y1, 0));
+      for (i = _i = 0; 0 <= numPoints ? _i < numPoints : _i > numPoints; i = 0 <= numPoints ? ++_i : --_i) {
+        points.push(new THREE.Vector3(rf(0, 40), rf(0, 40), 0));
+      }
+      points.push(new THREE.Vector3(x2, y2, 0));
+      return points;
+    };
+    this.strandGeometry = new THREE.Geometry();
+    this.strandGeometry.vertices.push(new THREE.Vector3(0, 0, 0));
+    points = createPoints(0, 0, 50, 0, 10);
+    for (i = _i = 0, _ref = points.length; 0 <= _ref ? _i < _ref : _i > _ref; i = 0 <= _ref ? ++_i : --_i) {
+      this.strandGeometry.vertices.push(points[i]);
       colors[i] = new THREE.Color(0x000000);
-      prevVertex = vertex;
+      colors[i].setHSL(0.4, 0.7, 0.7);
     }
-    this.geometry.colors = colors;
-    this.curVertexIndex = 0;
+    this.strandGeometry.colors = colors;
     material = new THREE.LineBasicMaterial({
       vertexColors: THREE.VertexColors
     });
-    line = new THREE.Line(this.geometry, material);
-    this.scene.add(line);
+    for (i = _j = 0, _ref1 = this.numLines; 0 <= _ref1 ? _j <= _ref1 : _j >= _ref1; i = 0 <= _ref1 ? ++_j : --_j) {
+      line = new THREE.Line(this.strandGeometry, material);
+      line.rotation.z = i / this.numLines * Math.PI * 2;
+      this.scene.add(line);
+    }
+    ringGeo = new THREE.TorusGeometry(this.radius, 1, 10, 50);
+    ringMat = new THREE.MeshBasicMaterial;
+    ring = new THREE.Mesh(ringGeo, ringMat);
+    scene.add(ring);
   }
 
-  DreamCatcher.prototype.update = function() {
-    var _ref;
-    if ((_ref = this.geometry.colors[this.curVertexIndex++]) != null) {
-      _ref.setHSL(0.4, 0.7, 0.7);
-    }
-    return this.geometry.colorsNeedUpdate = true;
-  };
+  DreamCatcher.prototype.update = function() {};
 
   return DreamCatcher;
 
