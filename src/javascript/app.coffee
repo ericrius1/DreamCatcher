@@ -38,17 +38,16 @@ audioController = new AudioController()
 
 stream = new Stream('/audio/hang.mp3', audioController)
 
-stream.play()
+# stream.play()
 
 # vis = new Vis(scene, audioController)
 
 dreamcatcher = new DreamCatcher(scene, audioController)
 
 onBeat = ()->
-  dreamcatcher.updateBeat()
   setTimeout ()->
     onBeat()
-  , 50
+  , 440
 
 
 animate = ()->

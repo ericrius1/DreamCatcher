@@ -38083,15 +38083,12 @@ audioController = new AudioController();
 
 stream = new Stream('/audio/hang.mp3', audioController);
 
-stream.play();
-
 dreamcatcher = new DreamCatcher(scene, audioController);
 
 onBeat = function() {
-  dreamcatcher.updateBeat();
   return setTimeout(function() {
     return onBeat();
-  }, 50);
+  }, 440);
 };
 
 animate = function() {
@@ -38120,7 +38117,11 @@ animate();
 
 
 },{"./dreamcatcher":5,"./vendor/AudioController":6,"./vendor/AudioTexture":7,"./vendor/Stream":10,"./vis":11,"FlyControls":8,"OrbitControls":9,"three":2,"tween.js":3,"underscore":1}],5:[function(require,module,exports){
-var DreamCatcher, TWEEN, rf, _;
+var DreamCatcher, TWEEN, map, rf, _;
+
+map = function(value, min1, max1, min2, max2) {
+  return min2 + (max2 - min2) * ((value - min1) / (max1 - min1));
+};
 
 _ = require('underscore');
 
@@ -38130,21 +38131,25 @@ rf = THREE.Math.randFloat;
 
 DreamCatcher = (function() {
   function DreamCatcher(scene, audioController) {
-    var angleBunch, colors, createPoints, i, line, material, points, ring, ringGeo, ringMat, theta, _i, _j, _ref, _ref1;
+    var angleBunch, color, colors, createPoints, i, light, line, material, points, ring, ringGeo, ringMat, theta, _i, _j, _ref, _ref1;
     this.scene = scene;
     this.audioController = audioController;
+    this.containerObj = new THREE.Object3D();
+    this.scene.add(this.containerObj);
     this.numLines = 22;
+    this.numPoints = 21;
     this.outerRadius = 50;
     this.innerRadius = 1;
     colors = [];
-    this.curColIndex = 0;
-    this.hue = 0.1;
     this.oldVertex;
     this.curVertexIndex = 0;
+    this.rippleDir = 1;
+    this.hue = 0.496;
+    this.light = 0.5;
     createPoints = function(x1, y1, y2, x2, numPoints) {
       var i, jumpX, jumpY, newX, newY, points, prevX, prevY, vertex, _i;
-      jumpX = 5;
-      jumpY = 5;
+      jumpX = 3;
+      jumpY = 3;
       points = [];
       points.push(new THREE.Vector3(x1, y1, 0));
       prevX = x1;
@@ -38163,15 +38168,17 @@ DreamCatcher = (function() {
     this.strandGeometry = new THREE.Geometry();
     this.strandGeometry.vertices.push(new THREE.Vector3(0, 0, 0));
     colors.push(new THREE.Color(0x000000));
-    points = createPoints(0, 0, this.outerRadius, 0, 11);
+    points = createPoints(0, 0, this.outerRadius, 0, this.numPoints);
     for (i = _i = 0, _ref = points.length; 0 <= _ref ? _i < _ref : _i > _ref; i = 0 <= _ref ? ++_i : --_i) {
-      points[i].originalX = points[i].x;
-      points[i].originalY = points[i].y;
       this.strandGeometry.vertices.push(points[i]);
-      colors.push(new THREE.Color(0x000000));
+      this.strandGeometry.vertices[i].originalVertex = points[i].clone();
+      color = new THREE.Color(0x000000);
+      light = map(i, 0, points.length - 1, 0.5, 1);
+      color.setHSL(0.469, .9, light);
+      colors.push(color);
     }
     this.strandGeometry.colors = colors;
-    this.sampleVertices = this.strandGeometry.vertices.slice(1, this.strandGeometry.vertices.length);
+    this.sampleVertices = this.strandGeometry.vertices.slice(1, this.strandGeometry.vertices.length - 2);
     material = new THREE.LineBasicMaterial({
       vertexColors: THREE.VertexColors,
       linewidth: 2
@@ -38191,24 +38198,28 @@ DreamCatcher = (function() {
     ringMat = new THREE.MeshBasicMaterial;
     ring = new THREE.Mesh(ringGeo, ringMat);
     scene.add(ring);
+    this.ripple();
   }
 
-  DreamCatcher.prototype.updateBeat = function() {
-    var vertex;
-    if (this.curColIndex < this.strandGeometry.vertices.length) {
-      this.strandGeometry.colors[this.curColIndex++].setHSL(this.hue += .1, 0.7, 0.7);
+  DreamCatcher.prototype.ripple = function() {
+    var vertex, _ref;
+    vertex = this.sampleVertices[this.curVertexIndex];
+    vertex.x += 5;
+    if ((_ref = this.prevVertex) != null) {
+      _ref.set(this.prevVertex.originalVertex.x, this.prevVertex.originalVertex.y, this.prevVertex.originalVertex.z);
     }
-    if (this.oldVertex != null) {
-      this.oldVertex.x = this.oldVertex.originalX;
-    }
-    vertex = this.sampleVertices[this.curVertexIndex++];
-    if (this.curVertexIndex === this.sampleVertices.length) {
+    this.curVertexIndex += this.rippleDir;
+    if (this.curVertexIndex === this.sampleVertices.length - 1 || this.curVertexIndex === 0) {
       this.curVertexIndex = 0;
     }
-    vertex.x += 10;
-    this.oldVertex = vertex;
+    this.prevVertex = vertex;
     this.strandGeometry.verticesNeedUpdate = true;
-    return this.strandGeometry.colorsNeedUpdate = true;
+    this.strandGeometry.colorsNeedUpdate = true;
+    return setTimeout((function(_this) {
+      return function() {
+        return _this.ripple();
+      };
+    })(this), 20);
   };
 
   DreamCatcher.prototype.update = function() {};
